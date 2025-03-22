@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: staging
+    database: kestra-sandbox-449719
+    schema: project_zoomcamp
+
+    tables:
+      - name: spacetrack_gp_data
+      
