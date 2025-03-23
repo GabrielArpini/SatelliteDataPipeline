@@ -9,9 +9,8 @@ WITH ORBIT_DEBRIS AS (
         o.PERIOD,
         o.INCLINATION,
         o.LAUNCH_DATE,
-        c.ORBIT_CAT
-    FROM {{ source('project_zoomcamp', 'spacetrack_gp_data') }} o
-    LEFT JOIN {{ ref('orbit_categories') }} c
+        c.ORBIT_CAT,
+        {{ orbit_category('ECCENTRICITY', 'PERIOD', 'INCLINATION', 'SEMIMAJOR_AXIS') }} AS ORBIT_CAT
         ON o.NORAD_CAT_ID = c.NORAD_CAT_ID
     WHERE (o.OBJECT_TYPE = 'DEBRIS' OR o.OBJECT_TYPE = 'ROCKET BODY') 
     AND o.DECAY_DATE IS NULL
