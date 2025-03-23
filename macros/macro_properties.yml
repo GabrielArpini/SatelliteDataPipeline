@@ -1,0 +1,25 @@
+version: 2
+
+macros:
+  - name: orbit_category
+    description: >
+      This macro categorizes the orbit type based on parameters such as 
+      eccentricity, period, inclination, and semi-major axis.
+    arguments:
+      - name: eccentricity
+        type: float
+        description: >
+          Eccentricity of the orbit.
+      - name: period
+        type: int
+        description: >
+          Orbital period in minutes.
+      - name: inclination
+        type: float
+        description: >
+          Orbital inclination in degrees.
+      - name: semimajor_axis
+        type: float
+        description: >
+          Semi-major axis of the orbit in kilometers.
+
