@@ -6,16 +6,16 @@ sources:
     schema: project_zoomcamp
     tables:
       - name: spacetrack_gp_data
-        description: "Space track general perturbations data containing satellite and debris information"
+        description: "space track general perturbations data containing satellite and debris information"
 
   - name: dbt_satellite_analytics
     database: kestra-sandbox-449719 # Insert your project id here as well
     schema: dbt_satellite_analytics
     tables:
       - name: launches_stats
-        description: "Derived data containing stats about launches"
+        description: "derived data containing stats about launches"
       - name: orbit_debris
-        description: "Derived data containing orbit info about debris in orbit"
+        description: "derived data containing orbit info about debris in orbit"
       
       - name: lifespan_orbit
-        description: "Derived information about satellite lifespan per orbit category"
+        description: "derived information about satellite lifespan per orbit category"
