@@ -38,4 +38,5 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   dbt_analytics:
     core:
+          materialized: table
     # Applies to all files under models/example/
