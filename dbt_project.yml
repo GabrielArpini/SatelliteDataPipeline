@@ -37,4 +37,5 @@ clean-targets:         # directories to be removed by `dbt clean`
 
 models:
   dbt_analytics:
+    core:
     # Applies to all files under models/example/
