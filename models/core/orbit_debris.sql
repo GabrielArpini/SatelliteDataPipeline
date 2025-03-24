@@ -4,7 +4,11 @@ WITH ORBIT_DEBRIS AS (
     SELECT 
         o.OBJECT_TYPE,
         o.NORAD_CAT_ID,
-        o.COUNTRY_CODE,
+        CASE 
+            WHEN o.COUNTRY_CODE = 'CIS' THEN 'RUS'
+            WHEN o.COUNTRY_CODE = 'PRC' THEN 'CN'
+            ELSE o.COUNTRY_CODE
+        END AS COUNTRY_CODE,
         o.SEMIMAJOR_AXIS,
         o.PERIOD,
         o.INCLINATION,
