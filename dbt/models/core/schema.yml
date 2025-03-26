@@ -2,14 +2,14 @@ version: 2
 
 sources:
   - name: project_zoomcamp
-    database: kestra-sandbox-449719 # Here you will insert your project-id
+    database: # Here you will insert your project-id
     schema: project_zoomcamp
     tables:
       - name: spacetrack_gp_data
         description: "space track general perturbations data containing satellite and debris information"
 
   - name: dbt_satellite_analytics
-    database: kestra-sandbox-449719 # Insert your project id here as well
+    database: # Insert your project id here as well
     schema: dbt_satellite_analytics
     tables:
       - name: launches_stats
