@@ -1,0 +1,56 @@
+id: set_kvs
+namespace: project_zoomcamp
+
+# ATTENTION:
+# DO NOT UPLOAD THIS CODE IN ANY PLACE, IT CONTAINS SENSITIVE INFORMATION.
+# IF YOU WANT TO UPLOAD IT, MAKE SURE THAT YOU CHANGE SENSITIVE INFORMATION
+# WITH A PLACEHOLDER.
+
+tasks:
+#API KV
+  - id: spacetrack_usr
+    type: io.kestra.plugin.core.kv.Set
+    key: cfgUsr
+    value:  # TODO replace with your spacetrack username
+  
+  - id: spacetrack_pwd
+    type: io.kestra.plugin.core.kv.Set
+    key: cfgPwd
+    value:  # TODO replace with your spacetrack password 
+            # AFTER CHANGING DO NOT UPLOAD THIS CODE ANYWHERE
+            # WITHOUT MAKING SURE TO REPLACE THE 
+            # PASSWORD AND USERNAME WITH A PLACEHOLDER
+
+#GCP KV
+  - id: gcp_creds
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_CREDS
+    kvType: STRING
+    value: |
+          {
+            # TODO insert your service account JSON
+          }
+
+  - id: gcp_project_id
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_PROJECT_ID
+    kvType: STRING
+    value:  # TODO replace with your project id
+
+  - id: gcp_location
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_LOCATION
+    kvType: STRING
+    value: US
+
+  - id: gcp_bucket_name
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_BUCKET_NAME
+    kvType: STRING
+    value: project_zoomcamp_satellites
+
+  - id: gcp_dataset
+    type: io.kestra.plugin.core.kv.Set
+    key: GCP_DATASET
+    kvType: STRING
+    value: project_zoomcamp
