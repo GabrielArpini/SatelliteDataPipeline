@@ -44,8 +44,7 @@ sudo docker compose up -d
 After that, we need to upload this project Kestra flows inside Kestra:
 
 ```Bash
-curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/extract_data.yml
-curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/gcp_dbt_setup.yml
+curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/full_pipeline.yml
 curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/set_kvs.yml
 curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/setup_gcp.yml
 ```
