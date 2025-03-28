@@ -1,0 +1,266 @@
+id: extract_data
+namespace: project_zoomcamp
+description: this will extract the data from the spacetrack API.
+
+
+variables:
+  file: "gp_{{trigger.date | date('yyyy-MM-dd')}}.csv"
+  gcs_file: "gs://{{kv('GCP_BUCKET_NAME')}}/{{vars.file}}"
+  table: "{{kv('GCP_DATASET')}}.gp_{{trigger.date | date('yyyy-MM-dd')}}"
+  data: "{{outputs.download_data.outputFiles['gp_' ~ (trigger.date | date('yyyy-MM-dd')) ~ '.csv']}}"
+  previous_date: "{{ trigger.previous | date('yyyy-MM-dd') }}"
+  
+tasks:    
+  - id: download_data
+    type: io.kestra.plugin.scripts.python.Script
+    beforeCommands:
+      - pip install requests
+    outputFiles:
+      - "*.csv"
+    script: |
+      import requests 
+      import configparser
+      from datetime import datetime
+
+      uriBase = "https://www.space-track.org"
+      uriLogin = "/ajaxauth/login"
+
+      cfgUsr = "{{ kv('cfgUsr') }}"
+      cfgPwd = "{{ kv('cfgPwd') }}"
+
+      with requests.Session() as session:
+        # Login to enable API interaction
+        resp = session.post(uriBase + uriLogin, data={"identity": cfgUsr, "password": cfgPwd})
+        if resp.status_code != 200:
+            raise Exception(resp,"Fail to login")
+        print("Login was successfull!")
+        
+        # Download gp data
+        # ATTENTION: THIS QUERY CAN BE RAN ONCE PER DAY
+        resp = session.get(uriBase + "/basicspacedata/query/class/gp/format/csv")
+        if resp.status_code != 200:
+            raise Exception(resp, "Fail to GET gp data")
+        
+        # Writes data inside a .csv file with today's date
+        today = datetime.today().strftime('%Y-%m-%d')
+        with open(f"gp_{{trigger.date | date('yyyy-MM-dd')}}.csv", "wb") as f:
+            f.write(resp.content)
+  
+  - id: upload_gcs
+    type: io.kestra.plugin.gcp.gcs.Upload
+    from: "{{render(vars.data)}}"
+    to: "{{render(vars.gcs_file)}}"
+    serviceAccount: "{{kv('GCP_CREDS')}}"
+
+  - id: bq_spacetrack_data
+    type: io.kestra.plugin.gcp.bigquery.Query
+    serviceAccount: "{{kv('GCP_CREDS')}}"
+    projectId: "{{kv('GCP_PROJECT_ID')}}"
+    sql: |
+          CREATE TABLE IF NOT EXISTS `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.spacetrack_gp_data`
+          (
+            CCSDS_OMM_VERS STRING OPTIONS (description = 'Version of the CCSDS OMM standard.'),
+            COMMENT STRING OPTIONS (description = 'Additional comments related to the data.'),
+            CREATION_DATE DATETIME OPTIONS (description = 'Timestamp when the data was created.'),
+            ORIGINATOR STRING OPTIONS (description = 'Entity that created the data.'),
+            OBJECT_NAME STRING OPTIONS (description = 'Name of the space object.'),
+            OBJECT_ID STRING OPTIONS (description = 'Unique identifier for the object.'),
+            CENTER_NAME STRING OPTIONS (description = 'Name of the central celestial body.'),
+            REF_FRAME STRING OPTIONS (description = 'Reference frame of the orbital elements.'),
+            TIME_SYSTEM STRING OPTIONS (description = 'Time system used for the epoch.'),
+            MEAN_ELEMENT_THEORY STRING OPTIONS (description = 'Theory used to derive mean elements.'),
+            EPOCH DATETIME OPTIONS (description = 'Epoch time of the orbital elements.'),
+
+            MEAN_MOTION NUMERIC(13,8) OPTIONS (description = 'Mean motion in revolutions per day.'),
+            ECCENTRICITY NUMERIC(13,8) OPTIONS (description = 'Orbital eccentricity.'),
+            INCLINATION NUMERIC(7,4) OPTIONS (description = 'Orbital inclination in degrees.'),
+            RA_OF_ASC_NODE NUMERIC(7,4) OPTIONS (description = 'Right ascension of ascending node in degrees.'),
+            ARG_OF_PERICENTER NUMERIC(7,4) OPTIONS (description = 'Argument of pericenter in degrees.'),
+            MEAN_ANOMALY NUMERIC(7,4) OPTIONS (description = 'Mean anomaly in degrees.'),
+
+            EPHEMERIS_TYPE INT64 OPTIONS (description = 'Type of ephemeris used.'),
+            CLASSIFICATION_TYPE STRING OPTIONS (description = 'Classification type of the object.'),
+            NORAD_CAT_ID INT64 OPTIONS (description = 'NORAD Catalog ID of the object.'),
+            ELEMENT_SET_NO INT64 OPTIONS (description = 'Element set number.'),
+            REV_AT_EPOCH INT64 OPTIONS (description = 'Revolution number at epoch.'),
+
+            BSTAR BIGNUMERIC(19,9) OPTIONS (description = 'Drag term related to atmospheric drag.'), -- Changed from (19,14)
+            MEAN_MOTION_DOT NUMERIC(9,8) OPTIONS (description = 'First derivative of mean motion.'),
+            MEAN_MOTION_DDOT BIGNUMERIC(22,9) OPTIONS (description = 'Second derivative of mean motion.'), -- Changed from (22,13)
+
+            SEMIMAJOR_AXIS FLOAT64 OPTIONS (description = 'Semi-major axis of the orbit in kilometers.'),
+            PERIOD FLOAT64 OPTIONS (description = 'Orbital period in minutes.'),
+            APOAPSIS FLOAT64 OPTIONS (description = 'Apogee (highest point) of the orbit in kilometers.'),
+            PERIAPSIS FLOAT64 OPTIONS (description = 'Perigee (lowest point) of the orbit in kilometers.'),
+
+            OBJECT_TYPE STRING OPTIONS (description = 'Type of the object (e.g., payload, debris, rocket body).'),
+            RCS_SIZE STRING OPTIONS (description = 'Radar cross-section size classification.'),
+            COUNTRY_CODE STRING OPTIONS (description = 'Country code of ownership.'),
+
+            LAUNCH_DATE DATE OPTIONS (description = 'Launch date of the object.'),
+            SITE STRING OPTIONS (description = 'Launch site code.'),
+            DECAY_DATE DATE OPTIONS (description = 'Decay date if applicable.'),
+
+            FILE INT64 OPTIONS (description = 'File reference number.'),
+            GP_ID INT64 OPTIONS (description = 'General perturbations ID.'),
+
+            TLE_LINE0 STRING OPTIONS (description = 'First line of the TLE (title line).'),
+            TLE_LINE1 STRING OPTIONS (description = 'Second line of the Two-Line Element set (TLE).'),
+            TLE_LINE2 STRING OPTIONS (description = 'Third line of the Two-Line Element set (TLE).')
+          )
+          PARTITION BY TIMESTAMP_TRUNC(EPOCH, MONTH)
+          CLUSTER BY OBJECT_TYPE   
+          
+  - id: bq_spacetrack_data_ext
+    type: io.kestra.plugin.gcp.bigquery.Query
+    serviceAccount: "{{kv('GCP_CREDS')}}"
+    projectId: "{{kv('GCP_PROJECT_ID')}}"
+    sql: |
+      CREATE OR REPLACE EXTERNAL TABLE `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}_ext`
+      (
+        CCSDS_OMM_VERS STRING OPTIONS (description = 'Version of the CCSDS OMM standard.'),
+        COMMENT STRING OPTIONS (description = 'Additional comments related to the data.'),
+        CREATION_DATE DATETIME OPTIONS (description = 'Timestamp when the data was created.'),
+        ORIGINATOR STRING OPTIONS (description = 'Entity that created the data.'),
+        OBJECT_NAME STRING OPTIONS (description = 'Name of the space object.'),
+        OBJECT_ID STRING OPTIONS (description = 'Unique identifier for the object.'),
+        CENTER_NAME STRING OPTIONS (description = 'Name of the central celestial body.'),
+        REF_FRAME STRING OPTIONS (description = 'Reference frame of the orbital elements.'),
+        TIME_SYSTEM STRING OPTIONS (description = 'Time system used for the epoch.'),
+        MEAN_ELEMENT_THEORY STRING OPTIONS (description = 'Theory used to derive mean elements.'),
+        EPOCH DATETIME OPTIONS (description = 'Epoch time of the orbital elements.'),
+
+        MEAN_MOTION NUMERIC OPTIONS (description = 'Mean motion in revolutions per day.'),
+        ECCENTRICITY NUMERIC OPTIONS (description = 'Orbital eccentricity.'),
+        INCLINATION NUMERIC OPTIONS (description = 'Orbital inclination in degrees.'),
+        RA_OF_ASC_NODE NUMERIC OPTIONS (description = 'Right ascension of ascending node in degrees.'),
+        ARG_OF_PERICENTER NUMERIC OPTIONS (description = 'Argument of pericenter in degrees.'),
+        MEAN_ANOMALY NUMERIC OPTIONS (description = 'Mean anomaly in degrees.'),
+
+        EPHEMERIS_TYPE INT64 OPTIONS (description = 'Type of ephemeris used.'),
+        CLASSIFICATION_TYPE STRING OPTIONS (description = 'Classification type of the object.'),
+        NORAD_CAT_ID INT64 OPTIONS (description = 'NORAD Catalog ID of the object.'),
+        ELEMENT_SET_NO INT64 OPTIONS (description = 'Element set number.'),
+        REV_AT_EPOCH INT64 OPTIONS (description = 'Revolution number at epoch.'),
+
+        BSTAR BIGNUMERIC OPTIONS (description = 'Drag term related to atmospheric drag.'), 
+        MEAN_MOTION_DOT NUMERIC OPTIONS (description = 'First derivative of mean motion.'),
+        MEAN_MOTION_DDOT BIGNUMERIC OPTIONS (description = 'Second derivative of mean motion.'), 
+        SEMIMAJOR_AXIS FLOAT64 OPTIONS (description = 'Semi-major axis of the orbit in kilometers.'),
+        PERIOD FLOAT64 OPTIONS (description = 'Orbital period in minutes.'),
+        APOAPSIS FLOAT64 OPTIONS (description = 'Apogee (highest point) of the orbit in kilometers.'),
+        PERIAPSIS FLOAT64 OPTIONS (description = 'Perigee (lowest point) of the orbit in kilometers.'),
+
+        OBJECT_TYPE STRING OPTIONS (description = 'Type of the object (e.g., payload, debris, rocket body).'),
+        RCS_SIZE STRING OPTIONS (description = 'Radar cross-section size classification.'),
+        COUNTRY_CODE STRING OPTIONS (description = 'Country code of ownership.'),
+
+        LAUNCH_DATE DATE OPTIONS (description = 'Launch date of the object.'),
+        SITE STRING OPTIONS (description = 'Launch site code.'),
+        DECAY_DATE DATE OPTIONS (description = 'Decay date if applicable.'),
+
+        FILE INT64 OPTIONS (description = 'File reference number.'),
+        GP_ID INT64 OPTIONS (description = 'General perturbations ID.'),
+
+        TLE_LINE0 STRING OPTIONS (description = 'First line of the TLE (title line).'),
+        TLE_LINE1 STRING OPTIONS (description = 'Second line of the Two-Line Element set (TLE).'),
+        TLE_LINE2 STRING OPTIONS (description = 'Third line of the Two-Line Element set (TLE).')
+      )
+      OPTIONS (
+        format = 'CSV',
+        uris = ['{{render(vars.gcs_file)}}'],
+        skip_leading_rows = 1
+      );
+  - id: merge_into_master
+    type: io.kestra.plugin.gcp.bigquery.Query
+    serviceAccount: "{{kv('GCP_CREDS')}}"
+    projectId: "{{kv('GCP_PROJECT_ID')}}"
+    sql: |
+        MERGE INTO `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.spacetrack_gp_data` T
+        USING `{{kv('GCP_PROJECT_ID')}}.{{render(vars.table)}}_ext` S
+        ON T.OBJECT_ID = S.OBJECT_ID
+        AND T.NORAD_CAT_ID = S.NORAD_CAT_ID
+        WHEN MATCHED AND (
+          T.EPOCH != S.EPOCH OR
+          T.ECCENTRICITY != S.ECCENTRICITY OR
+          T.INCLINATION != S.INCLINATION OR
+          T.MEAN_MOTION != S.MEAN_MOTION OR
+          T.RA_OF_ASC_NODE != S.RA_OF_ASC_NODE OR
+          T.ARG_OF_PERICENTER != S.ARG_OF_PERICENTER OR
+          T.MEAN_ANOMALY != S.MEAN_ANOMALY OR
+          T.BSTAR != S.BSTAR OR
+          T.MEAN_MOTION_DOT != S.MEAN_MOTION_DOT OR
+          T.MEAN_MOTION_DDOT != S.MEAN_MOTION_DDOT OR
+          T.SEMIMAJOR_AXIS != S.SEMIMAJOR_AXIS OR
+          T.PERIOD != S.PERIOD OR
+          T.APOAPSIS != S.APOAPSIS OR
+          T.PERIAPSIS != S.PERIAPSIS OR
+          T.OBJECT_TYPE != S.OBJECT_TYPE OR
+          T.RCS_SIZE != S.RCS_SIZE OR
+          T.COUNTRY_CODE != S.COUNTRY_CODE OR
+          T.LAUNCH_DATE != S.LAUNCH_DATE OR
+          T.SITE != S.SITE OR
+          T.DECAY_DATE != S.DECAY_DATE OR
+          T.TLE_LINE0 != S.TLE_LINE0 OR
+          T.TLE_LINE1 != S.TLE_LINE1 OR
+          T.TLE_LINE2 != S.TLE_LINE2
+        ) THEN
+          UPDATE SET
+            T.EPOCH = S.EPOCH,
+            T.ECCENTRICITY = S.ECCENTRICITY,
+            T.INCLINATION = S.INCLINATION,
+            T.MEAN_MOTION = S.MEAN_MOTION,
+            T.RA_OF_ASC_NODE = S.RA_OF_ASC_NODE,
+            T.ARG_OF_PERICENTER = S.ARG_OF_PERICENTER,
+            T.MEAN_ANOMALY = S.MEAN_ANOMALY,
+            T.BSTAR = S.BSTAR,
+            T.MEAN_MOTION_DOT = S.MEAN_MOTION_DOT,
+            T.MEAN_MOTION_DDOT = S.MEAN_MOTION_DDOT,
+            T.SEMIMAJOR_AXIS = S.SEMIMAJOR_AXIS,
+            T.PERIOD = S.PERIOD,
+            T.APOAPSIS = S.APOAPSIS,
+            T.PERIAPSIS = S.PERIAPSIS,
+            T.OBJECT_TYPE = S.OBJECT_TYPE,
+            T.RCS_SIZE = S.RCS_SIZE,
+            T.COUNTRY_CODE = S.COUNTRY_CODE,
+            T.LAUNCH_DATE = S.LAUNCH_DATE,
+            T.SITE = S.SITE,
+            T.DECAY_DATE = S.DECAY_DATE,
+            T.TLE_LINE0 = S.TLE_LINE0,
+            T.TLE_LINE1 = S.TLE_LINE1,
+            T.TLE_LINE2 = S.TLE_LINE2
+          WHEN NOT MATCHED THEN
+          INSERT (OBJECT_ID, NORAD_CAT_ID, CCSDS_OMM_VERS, COMMENT, CREATION_DATE, ORIGINATOR, OBJECT_NAME, CENTER_NAME, REF_FRAME, TIME_SYSTEM, MEAN_ELEMENT_THEORY, EPOCH, MEAN_MOTION, ECCENTRICITY, INCLINATION, RA_OF_ASC_NODE, ARG_OF_PERICENTER, MEAN_ANOMALY, EPHEMERIS_TYPE, CLASSIFICATION_TYPE, ELEMENT_SET_NO, REV_AT_EPOCH, BSTAR, MEAN_MOTION_DOT, MEAN_MOTION_DDOT, SEMIMAJOR_AXIS, PERIOD, APOAPSIS, PERIAPSIS, OBJECT_TYPE, RCS_SIZE, COUNTRY_CODE, LAUNCH_DATE, SITE, DECAY_DATE, FILE, GP_ID, TLE_LINE0, TLE_LINE1, TLE_LINE2)
+          VALUES (S.OBJECT_ID, S.NORAD_CAT_ID, S.CCSDS_OMM_VERS, S.COMMENT, S.CREATION_DATE, S.ORIGINATOR, S.OBJECT_NAME, S.CENTER_NAME, S.REF_FRAME, S.TIME_SYSTEM, S.MEAN_ELEMENT_THEORY, S.EPOCH, S.MEAN_MOTION, S.ECCENTRICITY, S.INCLINATION, S.RA_OF_ASC_NODE, S.ARG_OF_PERICENTER, S.MEAN_ANOMALY, S.EPHEMERIS_TYPE, S.CLASSIFICATION_TYPE, S.ELEMENT_SET_NO, S.REV_AT_EPOCH, S.BSTAR, S.MEAN_MOTION_DOT, S.MEAN_MOTION_DDOT, S.SEMIMAJOR_AXIS, S.PERIOD, S.APOAPSIS, S.PERIAPSIS, S.OBJECT_TYPE, S.RCS_SIZE, S.COUNTRY_CODE, S.LAUNCH_DATE, S.SITE, S.DECAY_DATE, S.FILE, S.GP_ID, S.TLE_LINE0, S.TLE_LINE1, S.TLE_LINE2);
+
+  - id: remove_duplicate_table
+    type: io.kestra.plugin.gcp.bigquery.Query
+    serviceAccount: "{{kv('GCP_CREDS')}}"
+    projectId: "{{kv('GCP_PROJECT_ID')}}"
+    sql: |
+      DECLARE today_table STRING DEFAULT '{{render(vars.table)}}_ext';
+      DECLARE yesterday_table STRING DEFAULT '{{kv('GCP_DATASET')}}.gp_{{render(vars.previous_date)}}_ext';
+      
+      IF EXISTS (
+        SELECT 1 
+        FROM `{{kv('GCP_PROJECT_ID')}}`.{{kv('GCP_DATASET')}}.INFORMATION_SCHEMA.TABLES 
+        WHERE table_name = yesterday_table
+      ) THEN
+        IF (
+          SELECT 
+            (SELECT TO_HEX(MD5(STRING_AGG(CONCAT(OBJECT_ID, CAST(EPOCH AS STRING)), ','))) 
+             FROM `{{kv('GCP_PROJECT_ID')}}.${today_table}`) = 
+            (SELECT TO_HEX(MD5(STRING_AGG(CONCAT(OBJECT_ID, CAST(EPOCH AS STRING)), ','))) 
+             FROM `{{kv('GCP_PROJECT_ID')}}.{{kv('GCP_DATASET')}}.${yesterday_table}`)
+        ) THEN
+          EXECUTE IMMEDIATE 'DROP TABLE `{{kv('GCP_PROJECT_ID')}}.${today_table}`';
+        END IF;
+      END IF;
+
+
+triggers:
+  - id: spacetrack_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 8 * * *"
+
+
