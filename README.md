@@ -49,6 +49,6 @@ curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/set_
 curl -X POST http://localhost:8080/api/v1/flows/import -F fileUpload=@flows/setup_gcp.yml
 ```
 
-Now, with docker compose running, go ahead on your browser and search `localhost:8080` to interact with Kestra interface.
+Now, with docker compose running, go ahead on your browser and search `localhost:8080` to interact with Kestra interface. Click on `Flows`
 
 

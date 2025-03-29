@@ -7,6 +7,7 @@ WITH ORBIT_DEBRIS AS (
         CASE 
             WHEN o.COUNTRY_CODE = 'CIS' THEN 'RUS'
             WHEN o.COUNTRY_CODE = 'PRC' THEN 'CN'
+            WHEN COUNTRY_CODE = '' THEN 'UNKNOWN'
             ELSE o.COUNTRY_CODE
         END AS COUNTRY_CODE,
         o.SEMIMAJOR_AXIS,
