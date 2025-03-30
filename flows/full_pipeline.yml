@@ -108,8 +108,9 @@ tasks:
             TLE_LINE1 STRING OPTIONS (description = 'Second line of the Two-Line Element set (TLE).'),
             TLE_LINE2 STRING OPTIONS (description = 'Third line of the Two-Line Element set (TLE).')
           )
-          PARTITION BY TIMESTAMP_TRUNC(EPOCH, MONTH)
-          CLUSTER BY OBJECT_TYPE   
+          PARTITION BY DATE_TRUNC(LAUNCH_DATE, MONTH)
+          CLUSTER BY OBJECT_TYPE, COUNTRY_CODE
+
           
   - id: bq_spacetrack_data_ext
     type: io.kestra.plugin.gcp.bigquery.Query
