@@ -39,9 +39,9 @@ Understanding how different features of the dataset interact with each other and
 
 ![image](imgs/ELT_pipeline.png) –
 
-The pipeline follows an `ELT (Extract, Load, Transform)` approach and is `fully orchestrated within Kestra`, enabling `automated batch processing through backfill executions and daily scheduled runs`. It begins with a Python script that extracts data from the `space-track.org RESTful API`, specifically the General Perturbations (GP) dataset, which includes both known and unidentified objects detected via Radar Cross Section (RCS). The extracted data is saved as a .csv file within Kestra internal variables and `uploaded` to a Google Cloud Platform (GCP) `Bucket`. 
+The pipeline follows an `ELT (Extract, Load, Transform)` approach and is `fully orchestrated within Kestra`, enabling `automated batch processing through backfill executions and daily scheduled runs`. It begins with a Python script that extracts data from the `space-track.org RESTful API`, specifically the General Perturbations (GP) dataset, which includes both known and unidentified objects detected via Radar Cross Section (RCS). The extracted data is saved as a .csv file within Kestra's internal variables and `uploaded` to a Google Cloud Platform (GCP) `Bucket`. 
 
-From there, it is `loaded into BigQuery as an external table`, allowing direct querying without immediate transformation, the data is then inserted inside a `main table` which have all the data, it is partitioned by the launch date, which used in some tranformations from dbt and clustered by object type (a classification of an object: payload, debris and rocket body) and country code. Each day, the newly extracted dataset is compared against the previous day's table instead of the main table, optimizing the update process by avoiding unnecessary iterations over the full dataset. If changes are detected, new rows are inserted, and existing records are updated in the main table. If no changes are found, the newly created daily table is dropped and deleted, ensuring efficient storage management. Once the main table is updated, `dbt executes the transformation` step, generating new tables optimized for analytics. These tables aggregate key attributes, filter unnecessary columns, and restructure the data to enhance usability in Looker Studio for visualization and insight generation. By leveraging Kestra as the workflow orchestrator, this ELT pipeline automates the entire data lifecycle, ensuring efficient, scalable, and continuously updated processing of satellite data.
+From there, it is `loaded into BigQuery as an external table`, allowing direct querying without immediate transformation, the data is then inserted inside a `main table` that stores all the records, it is partitioned by the launch date, which used in some tranformations from dbt and clustered by object type (a classification of an object: payload, debris and rocket body) and country code. Each day, the newly extracted dataset is compared against the previous day's table instead of the main table, optimizing the update process by avoiding unnecessary iterations over the full dataset. If changes are detected, new rows are inserted, and existing records are updated in the main table. If no changes are found, the newly created daily table is dropped and deleted, ensuring efficient storage management. Once the main table is updated, `dbt executes the transformation` step, generating new tables optimized for analytics. These tables aggregate key attributes, filter unnecessary columns, and restructure the data to enhance usability in Looker Studio for visualization and insight generation. By leveraging Kestra as the workflow orchestrator, this ELT pipeline automates the entire data lifecycle, ensuring efficient, scalable, and continuously updated processing of satellite data.
 
 ### Dbt transformed tables
 
@@ -79,36 +79,36 @@ This table shows how long a satellite is in orbit and categorizes it by type of 
 
 - MAX_ORBIT_DAYS;
 
-- AVG_DRAG; -- Average [drag](https://en.wikipedia.org/wiki/Orbital_decay)
+- AVG_DRAG; -- Average atmospheric drag, affecting orbital decay. [More info](https://en.wikipedia.org/wiki/Orbital_decay)
 
 #### orbit_debris
 This tables shows important information about debris in orbit, i'm considering rocket bodies as debris as well. It contains the following columns:
 
 - COUNTRY_CODE;
 
-- ACTIVE_OBJECTS_COUNT;
+- ACTIVE_OBJECTS_COUNT; -- Objects still in orbit, not only debris but rocket body as well.
 
-- AVG_SEMIMAJOR_AXIS;
+- AVG_SEMIMAJOR_AXIS; -- See: [link](https://simple.wikipedia.org/wiki/Semi-major_and_semi-minor_axes)
 
-- AVG_PERIOD;
+- AVG_PERIOD; -- See: [link](https://en.wikipedia.org/wiki/Orbital_period)
 
-- AVG_INCLINATION;
+- AVG_INCLINATION; -- See: [link](https://en.wikipedia.org/wiki/Orbital_inclination)
 
-- AVG_ORBIT_DAYS;
+- AVG_ORBIT_DAYS; -- Average days in orbit 
 
-- DEBRIS_COUNT;
+- DEBRIS_COUNT; -- Only shows objects with `debris` category count.
 
-- ROCKET_BODY_COUNT;
+- ROCKET_BODY_COUNT; -- Only shows objects with `Rocket Body` category count
 
-- LEO_COUNT;
+- LEO_COUNT; -- See: [link](https://en.wikipedia.org/wiki/Low_Earth_orbit)
 
-- PO_COUNT;
+- PO_COUNT; -- See: [link](https://en.wikipedia.org/wiki/Polar_orbit)
 
-- GEO_COUNT;
+- GEO_COUNT; -- See: [link](https://en.wikipedia.org/wiki/Geostationary_orbit)
 
-- GSO_COUNT;
+- GSO_COUNT; -- See: [link](https://en.wikipedia.org/wiki/Geosynchronous_orbit)
 
-- MEO_COUNT;
+- MEO_COUNT; -- See: [link](https://en.wikipedia.org/wiki/Medium_Earth_orbit)
 
 - OTHER_ORBIT_COUNT;
 
@@ -241,7 +241,7 @@ Now, head back to your report and click on `Add a control` and select `Date rang
 
 Feel free to select time ranges to see how the chart reacts.
 
-We are half way there, just 2 tiles remaining. Let's create a chart showing the average launches per year using the `launches_stats` table again, select the following chart:
+We are half way there, just 2 tiles remaining. Let's create a chart showing the average monthly launches per year using the `launches_stats` table again, select the following chart:
 ![image](imgs/insights_13.png)
 
 Then:
@@ -249,10 +249,11 @@ Then:
 
 Well, it is not sorted by year, let's fix that:
 ![image](imgs/insights_15.png)
-Make sure that the sorting by year is descending, not ascending. We need to add a title as well, which will be `Average launches by year and country`:
+Make sure that the sorting by year is descending, not ascending. We need to add a title as well, which will be `Average monthly launches by year and country`:
+
 ![image](imgs/insights_16.png)
 
-Now, our last tile, ihullll, this one will be about the average days on orbit by type of orbit, in other words, there are a lot of types of orbits, based on altitude, inclination, etc, with dbt, we made a classification of the main types of orbits, now we are going to use it to see if there is some kind of relation between orbit type and how long a payload stays in orbit, and if drag is associated as well. We are going to use the `lifespan_orbit` table for that.
+Now, for our last visualization: average days in orbit by orbit type. There are multiple orbit types based on altitude, inclination, and other parameters. Using dbt, we classified these orbits into key categories. Now, we will analyze whether there is a relationship between orbit type and the duration a payload remains in orbit—and whether drag plays a role. We are going to use the `lifespan_orbit` table for that.
 
 Select a `combo chart`:
 ![image](imgs/insights_17.png)
@@ -262,7 +263,7 @@ Now, drag the columns to be the same as the image bellow:
 
 `The instruction bellow is optional.`
 
-Would be nice to see how the average drag influences the lifespan of a satellite, but there is a problem, the average drag is a value smaller than 0, but the y-axis is values bigger than 1000, so in the way it is the average drag will not be visible as we want, to fix that we need to use a log scale, but the log scale will make each bar of the chart not as different as we want from each other, so it will be harder to se how different each one is. Because of that, adding the average drag is an `optional choice`.
+It would be useful to analyze how average drag influences satellite lifespan. However, there’s a challenge: the average drag values are close to zero, while the y-axis values range in the thousands. This discrepancy makes drag values nearly invisible on the chart. One solution is to use a logarithmic scale, but this can reduce the visual distinction between different bar heights, making comparisons harder. Because of that, adding the average drag is an `optional choice`.
 First click on the slider `Optional metrics` and drag the `AVG_DRAG` to it:
 ![image](imgs/insights_19.png)
 Hover your chart to see the new optional metrics:
