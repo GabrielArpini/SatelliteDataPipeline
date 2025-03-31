@@ -150,6 +150,14 @@ Click `Add Key` and `Create new key`:
 
 
 ### Running Kestra
+First, clone this repository in the folder you want:
+```Bash
+git clone https://github.com/GabrielArpini/SatelliteDataPipeline.git
+```
+Cd into the new repository:
+```Bash
+cd SatelliteDataPipeline
+```
 Now, we need to run the `docker-compose.yml` file to start `Kestra`:
 
 ```Bash
