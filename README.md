@@ -51,66 +51,66 @@ Inside the macros folder you will be able to see the `orbit_categories.sql` whic
 #### launches_stats
 This table shows information about launches, it contains the following columns:
 
-COUNTRY_CODE;
+- COUNTRY_CODE;
 
-YEAR;
+- YEAR;
 
-TOTAL_LAUNCHES;
+- TOTAL_LAUNCHES;
 
-ACTIVE_MONTHS_COUNT;
+- ACTIVE_MONTHS_COUNT;
 
-AVG_MONTHLY_LAUNCHES; -- average monthly launches
+- AVG_MONTHLY_LAUNCHES; -- average monthly launches
 
-MONTHLY_LAUNCHES_STDDEV; -- standard deviation from monthly launches
+- MONTHLY_LAUNCHES_STDDEV; -- standard deviation from monthly launches
 
-LAUNCH_CV; -- Coefficient of variation
+- LAUNCH_CV; -- Coefficient of variation
 
 #### lifespan_orbit
 
 This table shows how long a satellite is in orbit and categorizes it by type of orbit from the macro. It contains the following columns:
 
-ORBIT_CAT; -- Category of orbit from the macro
+- ORBIT_CAT; -- Category of orbit from the macro
 
-SAT_COUNT; -- Number of satellites
+- SAT_COUNT; -- Number of satellites
 
-AVG_ORBIT_DAYS; -- Average days in orbit
+- AVG_ORBIT_DAYS; -- Average days in orbit
 
-MIN_ORBIT_DAYS; -- Minimal days in orbit
+- MIN_ORBIT_DAYS; -- Minimal days in orbit
 
-MAX_ORBIT_DAYS;
+- MAX_ORBIT_DAYS;
 
-AVG_DRAG; -- Average [drag](https://en.wikipedia.org/wiki/Orbital_decay)
+- AVG_DRAG; -- Average [drag](https://en.wikipedia.org/wiki/Orbital_decay)
 
 #### orbit_debris
 This tables shows important information about debris in orbit, i'm considering rocket bodies as debris as well. It contains the following columns:
 
-COUNTRY_CODE;
+- COUNTRY_CODE;
 
-ACTIVE_OBJECTS_COUNT;
+- ACTIVE_OBJECTS_COUNT;
 
-AVG_SEMIMAJOR_AXIS;
+- AVG_SEMIMAJOR_AXIS;
 
-AVG_PERIOD;
+- AVG_PERIOD;
 
-AVG_INCLINATION;
+- AVG_INCLINATION;
 
-AVG_ORBIT_DAYS;
+- AVG_ORBIT_DAYS;
 
-DEBRIS_COUNT;
+- DEBRIS_COUNT;
 
-ROCKET_BODY_COUNT;
+- ROCKET_BODY_COUNT;
 
-LEO_COUNT;
+- LEO_COUNT;
 
-PO_COUNT;
+- PO_COUNT;
 
-GEO_COUNT;
+- GEO_COUNT;
 
-GSO_COUNT;
+- GSO_COUNT;
 
-MEO_COUNT;
+- MEO_COUNT;
 
-OTHER_ORBIT_COUNT;
+- OTHER_ORBIT_COUNT;
 
 ## How to run
 ### User requirements
