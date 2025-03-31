@@ -200,6 +200,7 @@ After this flow finishes it execution, your BigQuery will have a bunch of tables
 ### Creating dashboards using Looker Studio
 For this step by step tutorial we are going to create the following dashboard:
 ![image](imgs/final_insight.png)
+You can view the dashboard in the following [link](https://lookerstudio.google.com/reporting/3ba22546-349a-429d-a58e-20f58ce040b7)
 
 Now that we have our data ready to analysis, we can create some cool plots using them. Go ahead to [Looker Studio](https://lookerstudio.google.com/) and `start a new blank report`, to create plots we need to connect a dataset with Looker Studio, our data is inside Big Query, so `click on the Big Query connector`:
  ![image](imgs/insights_1.png) 
